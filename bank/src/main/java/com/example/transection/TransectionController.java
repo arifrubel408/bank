@@ -1,0 +1,79 @@
+package com.example.transection;
+
+import java.util.List;
+
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+
+import org.springframework.web.bind.annotation.RestController;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.util.HashMap;
+import java.util.Map;
+
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperExportManager;
+import net.sf.jasperreports.engine.JasperFillManager;
+import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+@CrossOrigin(origins = "http://localhost:4200")
+@RestController
+
+public class TransectionController {
+
+	// Insert Data
+	@PostMapping(value = "/teansactionsave")
+	public void insert(@RequestBody Transection s) {
+		TransectionDA d = new TransectionDA();
+		d.insert(s);
+	}
+
+	// by account no
+	@GetMapping(value = "/transaction")
+	public List<Transection> transectionByAccountno() {
+
+		TransectionDA d = new TransectionDA();
+		return d.transectionByAccountno();
+
+	}
+
+	//user Transaction
+	@GetMapping(value = "/user-transaction/{fromDate}/{toDate}/{t_account}")
+	public List<Transection> userTransection(@PathVariable String fromDate, @PathVariable String toDate, @PathVariable int t_account) {
+
+		TransectionDA d1 = new TransectionDA();
+		return d1.userTransection(fromDate, toDate, t_account);
+
+	}
+	
+	
+	TransectionDA d = new TransectionDA();
+	//jasper 
+	@GetMapping(value = "/reports/{fromDate}/{toDate}/{tAccount}", produces = MediaType.APPLICATION_PDF_VALUE)
+	public ResponseEntity<byte[]> allTicket(@PathVariable("fromDate") String fromDate, @PathVariable("toDate") String toDate, @PathVariable("tAccount") int tAccount) {
+		try {
+			JRBeanCollectionDataSource dataSource = new JRBeanCollectionDataSource(d.userTransection(fromDate,toDate,tAccount), false);
+			Map<String, Object> param = new HashMap<>();
+			JasperReport compileReport = JasperCompileManager
+					.compileReport(new FileInputStream("src/main/resources/report1.jrxml"));
+			JasperPrint jasperPrint = JasperFillManager.fillReport(compileReport, param, dataSource);
+			byte[] data = JasperExportManager.exportReportToPdf(jasperPrint);
+			HttpHeaders headers = new HttpHeaders();
+			headers.add("Content-Disposition", "inline; filename=citiesreport.pdf");
+			return ResponseEntity.ok().headers(headers).contentType(MediaType.APPLICATION_PDF).body(data);
+		} catch (FileNotFoundException | JRException e) {
+			System.out.println(e);
+		}
+		return null;
+	}
+
+}
